@@ -89,6 +89,8 @@ class gridcmds:
     # Translates your inputs to a full fledged dataset
     def update_dataset(self, test=False):
         IP = self.IP
+
+        # Default parameters for dataset, else inputted parameters
         if test:
             self.bs = self.BSDataset(S=(114.33, 167.55),
                                      K=(10, 20),
@@ -103,7 +105,6 @@ class gridcmds:
             self.testset = self.bs[M:]
             self.epoch_rate = 0.01
             self.error_level = 0.00001
-
         else:
             self.bs = self.BSDataset(S=(float(IP["Stock"]["down"].get()), float(IP["Stock"]["up"].get())),
                                    K=(float(IP["Strike"]["down"].get()), float(IP["Strike"]["up"].get())),
@@ -161,18 +162,25 @@ class graphs:
         s0, d0 = w1.shape
         s1, d1 = w2.shape
         s2 = len(w3)
+
+        # Plot Weight Matrix One
         x, y = np.meshgrid(self.num_line(d0), self.num_line(s0))
         z = np.array(w1)
         self.pltW1.plot_surface(x, y, z, cmap='jet', edgecolor='black', linewidth=0.4, alpha=0.6)
         self.cvW1.draw()
+
+        # Plot Weight Matrix Two
         x, y = np.meshgrid(self.num_line(d1), self.num_line(s1))
         z = np.array(w2)
         self.pltW2.plot_surface(x, y, z, cmap='jet', edgecolor='black', linewidth=0.4, alpha=0.6)
         self.cvW2.draw()
+
+        # Plot Weight Matrix Three
         y = [float(f[0]) for f in w3]
         x = self.num_line(len(y))
         self.pltW3.bar(x, y, color='purple', alpha=0.6, edgecolor='black', linewidth=0.4)
         self.cvW3.draw()
+
         time.sleep(0.0001) # Makes sure plotter renders with a split break
 
     # Plots your dollar error
@@ -186,6 +194,7 @@ class graphs:
         self.errCV.draw()
         time.sleep(0.0001) # Makes sure plotter renders with a split break
 
+    # Clears all of your graphs
     def clearBoard(self):
         for plot in (self.pltW1, self.pltW2, self.pltW3, self.pltErr):
             plot.cla()
@@ -195,15 +204,19 @@ class graphs:
 # Contains your neural network functions
 class neural:
 
-    # Unit conversion class
+    # Unit conversion class, also holds data points
     class modeler:
 
         def __init__(self, parent):
+            # Store inputs and outputs to be normalized
             self.hold_vars = {i:[] for i in parent.variables if i != "Type"}
             self.hold_output = []
+
+            # Store minimum and maximum values of inputs and outputs
             self.out_stats = {'min': 0, 'max': 0}
             self.norm_stats = {i:{"min": None, "max": None} for i in parent.variables if i != "Type"}
 
+            # Stores the dollar error between the actual price and predicted price
             self.dollar_error = []
 
         # Deposit current data inputs for normalization
@@ -221,7 +234,7 @@ class neural:
             self.out_stats["min"] = np.min(self.hold_output)
             self.out_stats["max"] = np.max(self.hold_output)
 
-        # Use a formula to return a value between 0 & 1
+        # Use a formula to return inputs as values between 0 & 1
         def normalize(self, deposit, outvals, optype):
             params = []
             for i in deposit:
@@ -229,8 +242,6 @@ class neural:
             params.append([0 if optype == 'call' else 1])
             result_val = (outvals - self.out_stats["min"]) / (self.out_stats["max"] - self.out_stats["min"])
             return np.array(params), result_val
-
-        #def regularize(self, tag, # LEFT OFF HERE
 
 
     # Sigmoid function w/ derivative option
@@ -244,11 +255,10 @@ class neural:
     # This function trains your model weights
     def trainModel(self):
 
-        # Weights will be stored here for testing later
-        #self.WEIGHTS = {'W1': None, 'W2': None, 'W3' None}
-
+        # declare modeler object for storage and normalization
         self.model = self.modeler(self)
 
+        # clears plots (i know repeated but oh well)
         def clearPlots():
             # Every weight plot is cleared on every training epoch
             for plot in (self.pltW1, self.pltW2, self.pltW3, self.pltErr):
@@ -263,27 +273,29 @@ class neural:
         try:
             # Training loop goes through our entire training set
             for epoch, (S, K, r, q, v, t, op) in enumerate(self.trainset.values):
-                # Normalization of variables
+
+                # Prepare variables for normalization
                 items = {"Stock": S, "Strike": K, "RiskFree": r, "Dividend": q, "Volatility": v, "Maturity": t}
                 actual_price = self.BS(S, K, r, q, v, t, op)
 
+                # Normalize variables
                 self.model(items, actual_price)
                 INPUT, OUTPUT = self.model.normalize(items, actual_price, op)
 
-                if epoch % 5 == 0:
+                if epoch % 5 == 0: # Adds effect so weight adjustments can be better visualized
                     clearPlots()
 
                 if epoch < int(self.epoch_rate * len(self.trainset.values)):
                     pass # Gather some data in the beginning to normalzie effectively
                 else:
 
-                    # BEING TRAINING MODEL
+                    # Begin training the model
 
                     self.epoch_meter.configure(text='Training: {} Epochs Left'.format(len(self.trainset.values) - epoch - 1))
 
                     # I use absolute values for safety, I have had this glitch
-                    _err1 = [[100]]
-                    while abs(_err1[0][0]) > self.error_level:
+                    _err1 = 100
+                    while abs(_err1) > self.error_level:
 
                         # Compute Layer 1
                         X1 = W1.transpose().dot(INPUT)
@@ -297,23 +309,27 @@ class neural:
                         X3 = W3.transpose().dot(L2)
                         EST_OUTPUT = self.sigmoid(X3)
 
+                        # Compute Output Error
                         _err1 = (OUTPUT - EST_OUTPUT)**2
-                        _dw1 = 2*(OUTPUT - EST_OUTPUT)*self.sigmoid(X3, d=True)
+                        _dw1 = 2.0*(OUTPUT - EST_OUTPUT)*self.sigmoid(X3, d=True)
 
+                        # Compute Layer 2 Error
                         _err2 = W3.dot(_dw1)
                         _dw2 = _err2 * self.sigmoid(X2, d=True)
 
+                        # Compute Layer 1 error
                         _err3 = W2.dot(_dw2)
                         _dw3 = _err3 * self.sigmoid(X1, d=True)
 
+                        # Adjust Weights
                         W1 += INPUT.dot(_dw3.transpose())
                         W2 += L1.dot(_dw2.transpose())
                         W3 += L2.dot(_dw1.transpose())
 
 
-                # Plot weights
-                if epoch % 4 == 0: clearPlots()
-                self.plotWeights(W1, W2, W3)
+                    # Plot weights
+                    if epoch % 4 == 0: clearPlots()
+                    self.plotWeights(W1, W2, W3)
 
                 print('Training Epoch: ', epoch + 1)
         except Exception as e:
@@ -347,7 +363,7 @@ class neural:
             EST_OUTPUT = self.sigmoid(X3)
 
             estimated_price = EST_OUTPUT[0][0] * (self.model.out_stats["max"] - self.model.out_stats["min"]) + self.model.out_stats["min"]
-            self.model.dollar_error.append(actual_price - estimated_price)
+            self.model.dollar_error.append(abs(actual_price - estimated_price))
 
             self.plotDollar(self.model.dollar_error)
 
@@ -385,7 +401,7 @@ class gridboard(tk.Tk,
         trainFrame.grid(row=4, column=3)
         self.train_frame(trainFrame)
 
-    # Holds the training and testing button
+    # Holds the training and testing button, along with epoch meter
     def train_frame(self, frame):
         tk.Button(frame, text="Train Model", command=lambda: self.trainModel()).grid(row=1, column=1)
         tk.Button(frame, text="Test Model", command=lambda: self.testModel()).grid(row=2, column=1)
