@@ -16,6 +16,7 @@
 import numpy as np
 import pandas as pd
 import random as rd
+import time
 
 import tkinter as tk
 import tkinter.ttk as ttk
@@ -39,10 +40,10 @@ class items:
 class blackscholes:
 
     # Calculates Probability of D1 & D2 using simpsons integration
-    def N(self, x, n=1111):
+    def N(self, x, n=171):
         s = lambda n: [1 if i == 0 or i == n - 1 else 2 if i % 2 == 0 else 4 for i in range(n)]
         f = lambda x: np.exp(-x**2/2.0)/np.sqrt(2.0*np.pi)
-        a = -40
+        a = round(x - 11, 0)
         dx = (x - a) / (n - 1)
         Total = np.sum([c*f(a + i * dx) for i, c in enumerate(s(n))])
         return round(dx/3.0 * Total, 4)
@@ -60,6 +61,8 @@ class blackscholes:
             return S * np.exp(-q*t) * self.N(d1) - K * np.exp(-r*t) * self.N(d2)
         else:
             return K * np.exp(-r*t) * self.N(-d2) - S * np.exp(-q*t) * self.N(-d1)
+
+
 
     # Creates a pandas frame with your dataset containing Black Scholes input variables
     def BSDataset(self, S=(), K=(), r=(), q=(), v=(), m=(), size=1000):
@@ -158,12 +161,17 @@ class graphs:
         s2 = len(w3)
         x, y = np.meshgrid(self.num_line(d0), self.num_line(s0))
         z = np.array(w1)
-        self.pltW1.bar3d(np.ravel(x), np.ravel(y), np.zeros(s0*d0), np.ones(s0*d0), np.ones(s0*d0), np.ravel(z), color="red", edgecolor="black")
+        self.pltW1.plot_surface(x, y, z, cmap='jet', edgecolor='black', linewidth=0.4, alpha=0.6)
         self.cvW1.draw()
         x, y = np.meshgrid(self.num_line(d1), self.num_line(s1))
         z = np.array(w2)
-        self.pltW2.bar3d(np.ravel(x), np.ravel(y), np.zeros(s1*d1), np.ones(s1*d1), np.ones(s1*d1), np.ravel(z), color="cyan", edgecolor="black")
+        self.pltW2.plot_surface(x, y, z, cmap='jet', edgecolor='black', linewidth=0.4, alpha=0.6)
         self.cvW2.draw()
+        y = [float(f[0]) for f in w3]
+        x = self.num_line(len(y))
+        self.pltW3.bar(x, y, color='purple', alpha=0.6, edgecolor='black', linewidth=0.4)
+        self.cvW3.draw()
+        time.sleep(0.001)
 
 
 # Contains your neural network functions
@@ -185,12 +193,15 @@ class neural:
 
             def __init__(self, parent):
                 self.hold_vars = {i:[] for i in parent.variables if i != "Type"}
+                self.hold_output = []
+                self.out_stats = {'min': 0, 'max': 0}
                 self.norm_stats = {i:{"min": None, "max": None} for i in parent.variables if i != "Type"}
 
             # Deposit current data inputs for normalization
-            def __call__(self, deposit):
+            def __call__(self, deposit, outvals):
                 for i, j in deposit.items():
                     self.hold_vars[i].append(j)
+                self.hold_output.append(outvals)
                 self.min_max()
 
             # Calculate the min and max of each variable
@@ -198,65 +209,90 @@ class neural:
                 for i in self.hold_vars:
                     self.norm_stats[i]["min"] = np.min(self.hold_vars[i])
                     self.norm_stats[i]["max"] = np.max(self.hold_vars[i])
+                self.out_stats["min"] = np.min(self.hold_output)
+                self.out_stats["max"] = np.max(self.hold_output)
 
             # Use a formula to return a value between 0 & 1
-            def normalize(self, deposit, optype):
+            def normalize(self, deposit, outvals, optype):
                 params = []
                 for i in deposit:
                     params.append([(deposit[i] - self.norm_stats[i]["min"]) / (self.norm_stats[i]["max"] - self.norm_stats[i]["min"])])
-                params.append([optype])
-                return np.array(params)
+                params.append([0 if optype == 'call' else 1])
+                result_val = (outvals - self.out_stats["min"]) / (self.out_stats["max"] - self.out_stats["min"])
+                return np.array(params), result_val
 
-            def regularize(self, tag, # LEFT OFF HERE 
+            #def regularize(self, tag, # LEFT OFF HERE
 
         model = modeler(self)
 
-        # Every weight plot is cleared on every training epoch
-        for plot in (self.pltW1, self.pltW2, self.pltW3, self.pltErr):
-            plot.cla()
+        def clearPlots():
+            # Every weight plot is cleared on every training epoch
+            for plot in (self.pltW1, self.pltW2, self.pltW3, self.pltErr):
+                plot.cla()
 
         # Define our weight arrays
         W1 = np.array([[rd.random() for j in range(4)] for i in range(7)])
         W2 = np.array([[rd.random() for j in range(3)] for i in range(4)])
         W3 = np.array([[rd.random()] for j in range(3)])
 
-        # Training loop goes through our entire training set
-        for epoch, (S, K, r, q, v, t, op) in enumerate(self.trainset.values):
-           # Normalization of variables
-           items = {"Stock": S, "Strike": K, "RiskFree": r, "Dividend": q, "Volatility": v, "Maturity": t}
-           model(items)
+        try:
+            # Training loop goes through our entire training set
+            for epoch, (S, K, r, q, v, t, op) in enumerate(self.trainset.values):
+                # Normalization of variables
+                items = {"Stock": S, "Strike": K, "RiskFree": r, "Dividend": q, "Volatility": v, "Maturity": t}
+                actual_price = self.BS(S, K, r, q, v, t, op)
 
-           if epoch < int(self.epoch_rate * len(self.trainset.values)):
-               pass # Gather some data in the beginning to normalzie effectively
-           else:
+                model(items, actual_price)
+                INPUT, OUTPUT = model.normalize(items, actual_price, op)
 
-               # BEING TRAINING MODEL
+                if epoch % 5 == 0:
+                    clearPlots()
 
-               actual_price = self.BS(S, K, r, q, v, t op)
-               predicted_price = 0
+                if epoch < int(self.epoch_rate * len(self.trainset.values)):
+                    pass # Gather some data in the beginning to normalzie effectively
+                else:
 
-               while (actual_price - predicted_price)**2 > pow(10,-4):
-                   # Get your normalized inputs
-                   INPUT = model.normalize(items, 0 if op == 'call' else 1)
+                    # BEING TRAINING MODEL
 
-                   # Compute Layer 1
-                   X1 = W1.transpose().dot(INPUT)
-                   L1 = self.sigmoid(X1)
+                    pass
 
-                   # Compute Layer 2
-                   X2 = W2.transpose().dot(L1)
-                   L2 = self.sigmoid(X2)
+                    # I use absolute values for safety, I have had this glitch
+                    _err1 = [[100]]
+                    while abs(_err1[0][0]) > pow(10, -5):
 
-                   # Compute Layer 3
-                   X3 = W3.transpose().dot(L2)
-                   OUTPUT = self.sigmoid(X3)
+                        # Compute Layer 1
+                        X1 = W1.transpose().dot(INPUT)
+                        L1 = self.sigmoid(X1)
 
-                   # Regularize predicted price for comparison
+                        # Compute Layer 2
+                        X2 = W2.transpose().dot(L1)
+                        L2 = self.sigmoid(X2)
+
+                        # Compute Layer 3
+                        X3 = W3.transpose().dot(L2)
+                        EST_OUTPUT = self.sigmoid(X3)
+
+                        _err1 = (OUTPUT - EST_OUTPUT)**2
+                        _dw1 = 2*(OUTPUT - EST_OUTPUT)*self.sigmoid(X3, d=True)
+
+                        _err2 = W3.dot(_dw1)
+                        _dw2 = _err2 * self.sigmoid(X2, d=True)
+
+                        _err3 = W2.dot(_dw2)
+                        _dw3 = _err3 * self.sigmoid(X1, d=True)
+
+                        W1 += INPUT.dot(_dw3.transpose())
+                        W2 += L1.dot(_dw2.transpose())
+                        W3 += L2.dot(_dw1.transpose())
 
 
-           # Plot weights
-           self.plotWeights(W1, W2, W3)
+                # Plot weights
+                clearPlots()
+                self.plotWeights(W1, W2, W3)
 
+                print('Training Epoch: ', epoch + 1)
+        except Exception as e:
+            print("Training Error: ", e)
 
     # This function tests your models strength
     def testModel(self):
