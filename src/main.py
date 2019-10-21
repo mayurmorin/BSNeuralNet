@@ -33,6 +33,7 @@ class items:
     graph_fig = (4, 3.5)
 
     num_line = lambda self, n: [i+1 for i in range(n)]
+    lister = lambda self, x: [i for i in x]
 
 # Contains the black scholes equation solver
 class blackscholes:
@@ -169,7 +170,7 @@ class graphs:
 class neural:
 
     # Sigmoid function w/ derivative option
-    def sigmoid(x, d=False):
+    def sigmoid(self, x, d=False):
         f = 1.0 / (1.0 + np.exp(-x))
         if d:
             return f * (1.0 - f)
@@ -186,16 +187,19 @@ class neural:
                 self.hold_vars = {i:[] for i in parent.variables if i != "Type"}
                 self.norm_stats = {i:{"min": None, "max": None} for i in parent.variables if i != "Type"}
 
+            # Deposit current data inputs for normalization
             def __call__(self, deposit):
                 for i, j in deposit.items():
                     self.hold_vars[i].append(j)
                 self.min_max()
 
+            # Calculate the min and max of each variable
             def min_max(self):
                 for i in self.hold_vars:
                     self.norm_stats[i]["min"] = np.min(self.hold_vars[i])
                     self.norm_stats[i]["max"] = np.max(self.hold_vars[i])
 
+            # Use a formula to return a value between 0 & 1
             def normalize(self, deposit, optype):
                 params = []
                 for i in deposit:
@@ -203,15 +207,20 @@ class neural:
                 params.append([optype])
                 return np.array(params)
 
+            def regularize(self, tag, # LEFT OFF HERE 
+
         model = modeler(self)
 
+        # Every weight plot is cleared on every training epoch
         for plot in (self.pltW1, self.pltW2, self.pltW3, self.pltErr):
             plot.cla()
 
+        # Define our weight arrays
         W1 = np.array([[rd.random() for j in range(4)] for i in range(7)])
         W2 = np.array([[rd.random() for j in range(3)] for i in range(4)])
-        W3 = np.array([rd.random() for j in range(3)])
+        W3 = np.array([[rd.random()] for j in range(3)])
 
+        # Training loop goes through our entire training set
         for epoch, (S, K, r, q, v, t, op) in enumerate(self.trainset.values):
            # Normalization of variables
            items = {"Stock": S, "Strike": K, "RiskFree": r, "Dividend": q, "Volatility": v, "Maturity": t}
@@ -220,10 +229,30 @@ class neural:
            if epoch < int(self.epoch_rate * len(self.trainset.values)):
                pass # Gather some data in the beginning to normalzie effectively
            else:
-               # Get your normalized inputs
-               INPUT = model.normalize(items, 0 if op == 'call' else 1)
-               print(INPUT)
-               print("model training off data")
+
+               # BEING TRAINING MODEL
+
+               actual_price = self.BS(S, K, r, q, v, t op)
+               predicted_price = 0
+
+               while (actual_price - predicted_price)**2 > pow(10,-4):
+                   # Get your normalized inputs
+                   INPUT = model.normalize(items, 0 if op == 'call' else 1)
+
+                   # Compute Layer 1
+                   X1 = W1.transpose().dot(INPUT)
+                   L1 = self.sigmoid(X1)
+
+                   # Compute Layer 2
+                   X2 = W2.transpose().dot(L1)
+                   L2 = self.sigmoid(X2)
+
+                   # Compute Layer 3
+                   X3 = W3.transpose().dot(L2)
+                   OUTPUT = self.sigmoid(X3)
+
+                   # Regularize predicted price for comparison
+
 
            # Plot weights
            self.plotWeights(W1, W2, W3)
