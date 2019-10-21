@@ -84,12 +84,12 @@ class gridcmds:
     def update_dataset(self):
         IP = self.IP
         self.bs = self.BSDataset(S=(float(IP['Stock']['down'].get()), float(IP['Stock']['up'].get())),
-                                                               K=(float(IP['Strike']['down'].get()), float(IP['Strike']['up'].get())),
-                                                               r=(float(IP['RiskFree']['down'].get()), float(IP['RiskFree']['up'].get())),
-                                                               q=(float(IP['Dividend']['down'].get()), float(IP['Dividend']['up'].get())),
-                                                               v=(float(IP['Volatility']['down'].get()), float(IP['Volatility']['up'].get())),
-                                                               m=(int(IP['Maturity']['down'].get()), int(IP['Maturity']['up'].get())),
-                                                               size=int(self.rows.get()))
+                               K=(float(IP['Strike']['down'].get()), float(IP['Strike']['up'].get())),
+                               r=(float(IP['RiskFree']['down'].get()), float(IP['RiskFree']['up'].get())),
+                               q=(float(IP['Dividend']['down'].get()), float(IP['Dividend']['up'].get())),
+                               v=(float(IP['Volatility']['down'].get()), float(IP['Volatility']['up'].get())),
+                               m=(int(IP['Maturity']['down'].get()), int(IP['Maturity']['up'].get())),
+                               size=int(self.rows.get()))
         N = len(self.bs['Stock'])
         M = int(float(self.ttr_input.get())/100 * N)
         self.trainset = self.bs[:M]
