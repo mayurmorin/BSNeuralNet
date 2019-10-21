@@ -3,15 +3,18 @@
 ## Credits
 
 I got the idea to develop this gui after briefly reading the paper "Pricing options and computing implied volatilities
-using neural networks" by Shuaiqiang Liu, Cornelis W. Oosterlee, and Sander M.Bohte. This paper may be found on 
+using neural networks" by Shuaiqiang Liu, Cornelis W. Oosterlee, and Sander M.Bohte (2018, September). This paper may be found on 
 
 https://arxiv.org/pdf/1901.08943.pdf
+
+Our methods are different, with my main objective to not have the best model, but rather visualize weights being adjusted as training is taking place.
  
 
 ## Overview
 
-The user is able to input a set of parameters which create a pandas dataframe containing values which are plugged into the Black Scholes formula. With this dataframe, the user is able to input the % of data will be used to test. The model will
-learn to mimick the black scholes formula over time and will plot the weight matrices/vector and dollar error in the respective graphs programmed into the gui.
+This gui allows you to visualize a neural networks weights being adjusted while it is training to learn option prices. There are three groups of weights in this model, with the sizes being (7x4), (4x3), & (3x1). The graph is drawn in "Neural Network Diagram"
+
+The user is able to select a default dataset, or input their own parameters. Once the model is trained, the user can test the model and a graph of the absolute value dollar error between the actual option prices and predicted option prices will display. A bit of an explination. Epoch rate is the percentage of epochs I choose to skip to allow more accurate normalized minimum and maximum bound values. 
 
 ## Black Scholes Equation w/ Dividends (used in this GUI)
 
@@ -23,3 +26,12 @@ learn to mimick the black scholes formula over time and will plot the weight mat
 ## Neural Network Diagram
 
 ![Screenshot](https://github.com/MoSharieff/BSNeuralNet/blob/master/images/nnet.png)
+
+## Running Example
+
+In order to run this GUI, execute
+```sh
+> python3 main.py
+```
+
+![Alt](https://github.com/MoSharieff/BSNeuralNet/blob/master/images/demo.gif)
