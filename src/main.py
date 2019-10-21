@@ -1,4 +1,4 @@
-'''
+"""
     Black Scholes Neural Network
     Author: Mo Sharieff
 
@@ -10,7 +10,7 @@
     predicted values and the actual option prices. The other portion is the control
     panel which takes your inputs.
 
-'''
+"""
 
 
 import numpy as np
@@ -28,10 +28,12 @@ from matplotlib.figure import Figure
 # Contains all of your lambda functions and defined variables
 class items:
 
-    resolution = lambda self, x, y:  '{}x{}'.format(x, y)
-    variables = ('Stock', 'Strike', 'RiskFree', 'Dividend', 'Volatility', 'Maturity', 'Type')
+    resolution = lambda self, x, y:  "{}x{}".format(x, y)
+    variables = ("Stock", "Strike", "RiskFree", "Dividend", "Volatility", "Maturity", "Type")
     graph_fig = (4, 3.5)
-    
+
+    num_line = lambda self, n: [i+1 for i in range(n)]
+
 # Contains the black scholes equation solver
 class blackscholes:
 
@@ -53,7 +55,7 @@ class blackscholes:
     # Solves for a call or put option price
     def BS(self, S, K, r, q, v, t, op):
         d1, d2 = self.d(S, K, r, q, v, t)
-        if op == 'call':
+        if op == "call":
             return S * np.exp(-q*t) * self.N(d1) - K * np.exp(-r*t) * self.N(d2)
         else:
             return K * np.exp(-r*t) * self.N(-d2) - S * np.exp(-q*t) * self.N(-d1)
@@ -64,10 +66,10 @@ class blackscholes:
         for i in range(size):
             stock_price = rd.randint(int(S[0]*100), int(S[1]*100))/100
             if rd.randint(0, 1) == 0:
-                op_type = 'call'
+                op_type = "call"
                 strike_price = round(stock_price + rd.randint(K[0], K[1]), 0)
             else:
-                op_type = 'put'
+                op_type = "put"
                 strike_price = round(stock_price - rd.randint(K[0], K[1]), 0)
             risk_free = rd.randint(int(r[0]*1000), int(r[1]*1000))/1000
             dividend = rd.randint(int(q[0]*1000), int(q[1]*1000))/1000
@@ -78,24 +80,39 @@ class blackscholes:
 
 
 # Contains various command functions
-class gridcmds: 
+class gridcmds:
 
     # Translates your inputs to a full fledged dataset
-    def update_dataset(self):
+    def update_dataset(self, test=False):
         IP = self.IP
-        self.bs = self.BSDataset(S=(float(IP['Stock']['down'].get()), float(IP['Stock']['up'].get())),
-                               K=(float(IP['Strike']['down'].get()), float(IP['Strike']['up'].get())),
-                               r=(float(IP['RiskFree']['down'].get()), float(IP['RiskFree']['up'].get())),
-                               q=(float(IP['Dividend']['down'].get()), float(IP['Dividend']['up'].get())),
-                               v=(float(IP['Volatility']['down'].get()), float(IP['Volatility']['up'].get())),
-                               m=(int(IP['Maturity']['down'].get()), int(IP['Maturity']['up'].get())),
-                               size=int(self.rows.get()))
-        N = len(self.bs['Stock'])
-        M = int(float(self.ttr_input.get())/100 * N)
-        self.trainset = self.bs[:M]
-        self.testset = self.bs[M:]
-        self.epoch_rate = float(self.epr.get()) / 100
-        print(self.trainset, '\n\n', self.testset)
+        if test:
+            self.bs = self.BSDataset(S=(114.33, 167.55),
+                                     K=(10, 20),
+                                     r=(0.05, 0.08),
+                                     q=(0.01, 0.04),
+                                     v=(0.25, 0.61),
+                                     m=(3, 9),
+                                     size=400)
+            N = len(self.bs["Stock"])
+            M = int(float(0.8*N))
+            self.trainset = self.bs[:M]
+            self.testset = self.bs[M:]
+            self.epoch_rate = 0.01
+
+        else:
+            self.bs = self.BSDataset(S=(float(IP["Stock"]["down"].get()), float(IP["Stock"]["up"].get())),
+                                   K=(float(IP["Strike"]["down"].get()), float(IP["Strike"]["up"].get())),
+                                   r=(float(IP["RiskFree"]["down"].get()), float(IP["RiskFree"]["up"].get())),
+                                   q=(float(IP["Dividend"]["down"].get()), float(IP["Dividend"]["up"].get())),
+                                   v=(float(IP["Volatility"]["down"].get()), float(IP["Volatility"]["up"].get())),
+                                   m=(int(IP["Maturity"]["down"].get()), int(IP["Maturity"]["up"].get())),
+                                   size=int(self.rows.get()))
+            N = len(self.bs["Stock"])
+            M = int(float(self.ttr_input.get())/100 * N)
+            self.trainset = self.bs[:M]
+            self.testset = self.bs[M:]
+            self.epoch_rate = float(self.epr.get()) / 100
+        print("Dataset Refreshed")
 
 
 # Contains graph functions
@@ -105,16 +122,16 @@ class graphs:
     def weightOne(self, frame):
         fig = Figure(figsize=self.graph_fig, dpi=100)
         self.cvW1 = FigureCanvasTkAgg(fig, frame)
-        self.pltW1 = fig.add_subplot(111, projection='3d')
-        tk.Label(frame, text='Weight Matrix (1)').grid(row=1, column=1)
+        self.pltW1 = fig.add_subplot(111, projection="3d")
+        tk.Label(frame, text="Weight Matrix (1)").grid(row=1, column=1)
         self.cvW1.get_tk_widget().grid(row=2, column=1)
 
     # Graph of your second weight matrix
     def weightTwo(self, frame):
         fig = Figure(figsize=self.graph_fig, dpi=100)
         self.cvW2 = FigureCanvasTkAgg(fig, frame)
-        self.pltW2 = fig.add_subplot(111, projection='3d')
-        tk.Label(frame, text='Weight Matrix (2)').grid(row=1, column=2)
+        self.pltW2 = fig.add_subplot(111, projection="3d")
+        tk.Label(frame, text="Weight Matrix (2)").grid(row=1, column=2)
         self.cvW2.get_tk_widget().grid(row=2, column=2)
 
     # Graph of your third weight matrix
@@ -122,7 +139,7 @@ class graphs:
         fig = Figure(figsize=self.graph_fig, dpi=100)
         self.cvW3 = FigureCanvasTkAgg(fig, frame)
         self.pltW3 = fig.add_subplot(111)
-        tk.Label(frame, text='Weight Matrix (3)').grid(row=1, column=3)
+        tk.Label(frame, text="Weight Matrix (3)").grid(row=1, column=3)
         self.cvW3.get_tk_widget().grid(row=2, column=3)
 
     # Graph of your dollar error
@@ -130,8 +147,22 @@ class graphs:
         fig = Figure(figsize=self.graph_fig, dpi=100)
         self.errCV = FigureCanvasTkAgg(fig, frame)
         self.pltErr = fig.add_subplot(111)
-        tk.Label(frame, text='Pricing Error').grid(row=3, column=1)
+        tk.Label(frame, text="Pricing Error").grid(row=3, column=1)
         self.errCV.get_tk_widget().grid(row=4, column=1)
+
+    # Plots your weights
+    def plotWeights(self, w1, w2, w3):
+        s0, d0 = w1.shape
+        s1, d1 = w2.shape
+        s2 = len(w3)
+        x, y = np.meshgrid(self.num_line(d0), self.num_line(s0))
+        z = np.array(w1)
+        self.pltW1.bar3d(np.ravel(x), np.ravel(y), np.zeros(s0*d0), np.ones(s0*d0), np.ones(s0*d0), np.ravel(z), color="red", edgecolor="black")
+        self.cvW1.draw()
+        x, y = np.meshgrid(self.num_line(d1), self.num_line(s1))
+        z = np.array(w2)
+        self.pltW2.bar3d(np.ravel(x), np.ravel(y), np.zeros(s1*d1), np.ones(s1*d1), np.ones(s1*d1), np.ravel(z), color="cyan", edgecolor="black")
+        self.cvW2.draw()
 
 
 # Contains your neural network functions
@@ -147,34 +178,76 @@ class neural:
 
     # This function trains your model weights
     def trainModel(self):
-        
+
+        # Unit conversion class
+        class modeler:
+
+            def __init__(self, parent):
+                self.hold_vars = {i:[] for i in parent.variables if i != "Type"}
+                self.norm_stats = {i:{"min": None, "max": None} for i in parent.variables if i != "Type"}
+
+            def __call__(self, deposit):
+                for i, j in deposit.items():
+                    self.hold_vars[i].append(j)
+                self.min_max()
+
+            def min_max(self):
+                for i in self.hold_vars:
+                    self.norm_stats[i]["min"] = np.min(self.hold_vars[i])
+                    self.norm_stats[i]["max"] = np.max(self.hold_vars[i])
+
+            def normalize(self, deposit, optype):
+                params = []
+                for i in deposit:
+                    params.append([(deposit[i] - self.norm_stats[i]["min"]) / (self.norm_stats[i]["max"] - self.norm_stats[i]["min"])])
+                params.append([optype])
+                return np.array(params)
+
+        model = modeler(self)
+
+        for plot in (self.pltW1, self.pltW2, self.pltW3, self.pltErr):
+            plot.cla()
+
+        W1 = np.array([[rd.random() for j in range(4)] for i in range(7)])
+        W2 = np.array([[rd.random() for j in range(3)] for i in range(4)])
+        W3 = np.array([rd.random() for j in range(3)])
+
         for epoch, (S, K, r, q, v, t, op) in enumerate(self.trainset.values):
-            # Normalization
+           # Normalization of variables
+           items = {"Stock": S, "Strike": K, "RiskFree": r, "Dividend": q, "Volatility": v, "Maturity": t}
+           model(items)
 
            if epoch < int(self.epoch_rate * len(self.trainset.values)):
-               print('hehe shits and giggles')
+               pass # Gather some data in the beginning to normalzie effectively
            else:
-               print(S, r, v)
+               # Get your normalized inputs
+               INPUT = model.normalize(items, 0 if op == 'call' else 1)
+               print(INPUT)
+               print("model training off data")
+
+           # Plot weights
+           self.plotWeights(W1, W2, W3)
+
 
     # This function tests your models strength
     def testModel(self):
         pass
-                
-    
+
+
 # Your main class, the center of everything. The first step is to inherit
 # all of the subclasses
 class gridboard(tk.Tk,
-                                    items,
-                                    blackscholes,
-                                    gridcmds,
-                                    graphs,
-                                    neural):
+                items,
+                blackscholes,
+                gridcmds,
+                graphs,
+                neural):
 
     # Initialize your main GUI
     def __init__(self):
         tk.Tk.__init__(self)
-        tk.Tk.wm_title(self, 'Black Scholes Neural Net')
-        self.geometry(self.resolution(1300, 820))        
+        tk.Tk.wm_title(self, "Black Scholes Neural Net")
+        self.geometry(self.resolution(1300, 820))
 
         # Initialize graph frame
         graphFrame = tk.Frame(self)
@@ -196,45 +269,46 @@ class gridboard(tk.Tk,
 
     # Holds the training button
     def train_frame(self, frame):
-        tk.Button(frame, text='Train Model', command=lambda: self.trainModel()).grid(row=1, column=1)
+        tk.Button(frame, text="Train Model", command=lambda: self.trainModel()).grid(row=1, column=1)
 
     # Holds the control panel frame which contains inputs for training and testing ratio, dataset size, and min/max values of inputs
     def control_frame(self, gframe):
         frame = tk.Frame(gframe)
         dual = tk.Frame(gframe)
-        
-        tk.Label(frame, text='Train/Test Ratio: ').grid(row=1, column=1)
-        self.ttr_input = ttk.Entry(frame, width=5, justify='center')
+
+        tk.Label(frame, text="Train/Test Ratio: ").grid(row=1, column=1)
+        self.ttr_input = ttk.Entry(frame, width=5, justify="center")
         self.ttr_input.grid(row=1, column=2)
-        tk.Label(frame, text='%').grid(row=1, column=3)
-        tk.Label(frame, text='  Rows').grid(row=1, column=4)
-        self.rows = ttk.Entry(frame, width=7, justify='center')
+        tk.Label(frame, text="%").grid(row=1, column=3)
+        tk.Label(frame, text="  Rows").grid(row=1, column=4)
+        self.rows = ttk.Entry(frame, width=7, justify="center")
         self.rows.grid(row=1, column=5)
-        tk.Label(frame, text='  ').grid(row=1, column=6)
-        tk.Button(frame, text='Update DataSet', command=lambda: self.update_dataset()).grid(row=1, column=7)
-        tk.Label(frame, text='Epoch Rate: ').grid(row=2, column=1)
-        self.epr = ttk.Entry(frame, width=5, justify='center')
+        tk.Label(frame, text="  ").grid(row=1, column=6)
+        tk.Button(frame, text="Update DataSet", command=lambda: self.update_dataset(test=True)).grid(row=1, column=7)
+        tk.Label(frame, text="Epoch Rate: ").grid(row=2, column=1)
+        self.epr = ttk.Entry(frame, width=5, justify="center")
         self.epr.grid(row=2, column=2)
-        tk.Label(frame, text='%').grid(row=2, column=3)
+        tk.Label(frame, text="%").grid(row=2, column=3)
         frame.pack(side=tk.BOTTOM)
 
-        tk.Label(dual, text=' ').grid(row=1, column=1)
-        tk.Label(dual, text='Min').grid(row=2, column=1)
-        tk.Label(dual, text='Max').grid(row=3, column=1)
+        tk.Label(dual, text=" ").grid(row=1, column=1)
+        tk.Label(dual, text="Min").grid(row=2, column=1)
+        tk.Label(dual, text="Max").grid(row=3, column=1)
         self.IP = {}
         for ii, vv in enumerate(self.variables):
             if vv != "Type":
                 tk.Label(dual, text=vv).grid(row=1, column=2 + ii)
-                up_inp = ttk.Entry(dual, width=6, justify='center')
-                
-                dn_inp = ttk.Entry(dual, width=6, justify='center')
+
+                dn_inp = ttk.Entry(dual, width=6, justify="center")
+                up_inp = ttk.Entry(dual, width=6, justify="center")
+
                 dn_inp.grid(row=2, column=2 + ii)
                 up_inp.grid(row=3, column=2 + ii)
-                
-                self.IP[vv] = {'up': up_inp, 'down': dn_inp}
-        tk.Label(dual, text=' ').grid(row=4, column=1)
+
+                self.IP[vv] = {"up": up_inp, "down": dn_inp}
+        tk.Label(dual, text=" ").grid(row=4, column=1)
         dual.pack(side=tk.TOP)
-                                               
+
 
 # Run the gui
 gridboard().mainloop()
